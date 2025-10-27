@@ -1,0 +1,14 @@
+{% if product.metafields.custom.bundle_app.bundle_products != blank %}
+  <div class="bundle-products">
+    <h3>Frequently Bought Together</h3>
+    <ul>
+      {% for related in product.metafields.bundle_app.bundle_products.value %}
+        {% assign product_id = related.id | remove: "gid://shopify/Product/" %}
+        {% assign related_product = all_products[product_id] %}
+        <li>
+          <a href="{{ related_product.url }}">{{ related_product.title }}</a>
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endif %}
