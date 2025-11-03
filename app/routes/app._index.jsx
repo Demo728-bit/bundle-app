@@ -4,9 +4,11 @@ import { boundary } from "@shopify/shopify-app-react-router/server";
 export default function Index() {
   const [bundles, setBundles] = useState([]);
 
+  // Load saved bundles from localStorage
   useEffect(() => {
     const stored = JSON.parse(localStorage.getItem("bundles") || "[]");
     setBundles(stored);
+    console.log("📦 Loaded bundles:", stored);
   }, []);
 
   return (
@@ -88,10 +90,13 @@ export default function Index() {
           </div>
         )}
       </s-section>
-
     </s-page>
   );
 }
+
+// =============================================
+// ✅ BUNDLE CARD COMPONENT
+// =============================================
 function BundleCard({ bundle }) {
   const [showDetails, setShowDetails] = useState(false);
 
@@ -111,10 +116,17 @@ function BundleCard({ bundle }) {
           marginBottom: "0.5rem",
         }}
       >
-        {bundle.name}
+        {bundle.bundleName || "Untitled Bundle"}
       </h3>
+
       <p style={{ margin: "0.3rem 0" }}>
-        <strong>Main Product:</strong> {bundle.mainProduct}
+        <strong>Main Product:</strong>{" "}
+        {bundle.mainProductTitle || "Not selected"}
+      </p>
+
+      <p style={{ margin: "0.3rem 0" }}>
+        <strong>Products in Bundle:</strong>{" "}
+        {bundle.bundleProducts?.length || 0}
       </p>
 
       <s-button
@@ -125,10 +137,26 @@ function BundleCard({ bundle }) {
         {showDetails ? "Hide Bundle Products" : "View Bundle Products"}
       </s-button>
 
-      {showDetails && (
-        <ul style={{ marginTop: "0.8rem" }}>
-          {bundle.bundleProducts.map((bp, i) => (
-            <li key={i}>{bp}</li>
+      {showDetails && bundle.bundleProducts && (
+        <ul style={{ marginTop: "0.8rem", paddingLeft: "1.2rem" }}>
+          {bundle.bundleProducts.map((p, i) => (
+            <li key={i}>
+              {p.title ? (
+                <>
+                  {p.title}{" "}
+                  <a
+                    href={`/products/${p.handle}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ color: "#007bff" }}
+                  >
+                    (View)
+                  </a>
+                </>
+              ) : (
+                p
+              )}
+            </li>
           ))}
         </ul>
       )}
@@ -136,6 +164,9 @@ function BundleCard({ bundle }) {
   );
 }
 
+// =============================================
+// Shopify headers
+// =============================================
 export const headers = (headersArgs) => {
   return boundary.headers(headersArgs);
 };

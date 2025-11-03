@@ -23,51 +23,84 @@ export default function BundlePage() {
     );
   };
 
-  // ✅ Save Bundle
-  const handleSaveBundle = () => {
-    if (!bundleName || !mainProduct || bundleProducts.length === 0) {
-      alert("⚠️ Please complete all steps before saving!");
-      return;
-    }
+    // ✅ Save Bundle → Metafield + LocalStorage
+    const handleSaveBundle = async () => {
+      if (!bundleName || !mainProduct || bundleProducts.length === 0) {
+        alert("⚠️ Please complete all steps before saving!");
+        return;
+      }
 
-    const mainProductTitle =
-      products.find((p) => p.id === mainProduct)?.title || "Unknown";
+      try {
+        console.log("🟢 Selected bundleProducts (raw IDs):", bundleProducts);
+        console.log(
+          "🟢 All products (for reference):",
+          products.map((p) => ({ id: p.id, handle: p.handle }))
+        );
 
-    const bundleProductTitles = bundleProducts.map(
-      (id) => products.find((p) => p.id === id)?.title || "Unknown"
-    );
+        // ✅ Fix: Handle both plain IDs and GIDs
+        const bundleProductHandles = bundleProducts
+          .map((id) => {
+            const found = products.find(
+              (p) => p.id === id || p.id === `gid://shopify/Product/${id}`
+            );
+            return found ? found.handle : null;
+          })
+          .filter(Boolean); // remove null entries
 
-    const newBundle = {
-      id: Date.now(),
-      name: bundleName,
-      mainProduct: mainProductTitle,
-      bundleProducts: bundleProductTitles,
+        console.log("✅ Final Handles Sent:", bundleProductHandles);
+
+        // ✅ Send handles in metafield (server side save)
+        const response = await fetch("/api/save-bundle", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mainProductId: mainProduct,
+            bundleName,
+            bundleProducts,
+            bundleProductHandles,
+          }),
+        });
+
+        const result = await response.json();
+        console.log("📦 Save result:", result);
+
+        // ✅ ALSO save bundle locally in browser (localStorage)
+        const selectedMainProduct = products.find(
+          (p) => p.id === mainProduct || p.id === `gid://shopify/Product/${mainProduct}`
+        );
+
+        const selectedProducts = products.filter((p) =>
+          bundleProducts.includes(p.id)
+        );
+
+        const newBundle = {
+          id: Date.now(),
+          bundleName: bundleName || "Untitled Bundle",
+          mainProductTitle: selectedMainProduct?.title || "No main product",
+          bundleProducts: selectedProducts.map((p) => ({
+            title: p.title,
+            handle: p.handle,
+          })),
+        };
+
+        const existing = JSON.parse(localStorage.getItem("bundles") || "[]");
+        existing.push(newBundle);
+        localStorage.setItem("bundles", JSON.stringify(existing));
+
+        console.log("💾 Bundle saved locally:", newBundle);
+
+        if (result.success) {
+          alert("🎉 Bundle saved successfully in metafield + localStorage!");
+        } else {
+          alert("⚠️ Failed to save bundle metafield: " + result.error);
+        }
+      } catch (error) {
+        console.error("❌ Save error:", error);
+        alert("Something went wrong while saving.");
+      }
     };
 
-    const existing = JSON.parse(localStorage.getItem("bundles") || "[]");
-    existing.push(newBundle);
-    // Replace localStorage with metafield saving
-        fetch("/api/save-bundle", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            mainProductId: mainProduct,
-            bundleProductIds: bundleProducts,
-            bundleName: bundleName,
-        }),
-        })
-        .then((res) => res.json())
-        .then((data) => {
-            if (data.success) {
-            alert("🎉 Bundle saved successfully in metafield!");
-            window.location.href = "/app";
-            } else {
-            alert("⚠️ Failed to save bundle metafield!");
-            }
-        })
-        .catch((err) => console.error("Metafield save error:", err));
 
-        };
 
   return (
     <s-page heading="Custom Bundle Creator">
@@ -137,6 +170,9 @@ export default function BundlePage() {
                   }}
                 >
                   <strong>{product.title}</strong>
+                  <p style={{ fontSize: "0.8rem", color: "#666" }}>
+                    {product.handle}
+                  </p>
                 </div>
               ))}
             </div>
@@ -155,6 +191,7 @@ export default function BundlePage() {
                 <tr style={{ textAlign: "left", borderBottom: "1px solid #ddd" }}>
                   <th>Select</th>
                   <th>Product Name</th>
+                  <th>Handle</th>
                 </tr>
               </thead>
               <tbody>
@@ -171,6 +208,7 @@ export default function BundlePage() {
                       />
                     </td>
                     <td>{product.title}</td>
+                    <td style={{ color: "#666" }}>{product.handle}</td>
                   </tr>
                 ))}
               </tbody>
@@ -212,6 +250,4 @@ export default function BundlePage() {
   );
 }
 
-export const headers = (headersArgs) => {
-  return boundary.headers(headersArgs);
-};
+export const headers = (headersArgs) => boundary.headers(headersArgs);

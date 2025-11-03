@@ -1,40 +1,33 @@
 import { authenticate } from "../shopify.server";
 
-export const loader = async ({ request }) => {
-  try {
-    const { admin } = await authenticate.admin(request);
+export async function loader({ request }) {
+  const { admin } = await authenticate.admin(request);
 
-    const response = await admin.graphql(`
+  try {
+    // ✅ Updated GraphQL query to include handle
+    const query = `
       {
-        products(first: 20) {
+        products(first: 100) {
           edges {
             node {
               id
               title
-              images(first: 1) {
-                edges {
-                  node {
-                    src
-                  }
-                }
-              }
+              handle
             }
           }
         }
       }
-    `);
+    `;
 
-    const json = await response.json();
+    const response = await admin.graphql(query);
+    const data = await response.json();
 
-    const products = json.data.products.edges.map((edge) => ({
-      id: edge.node.id,
-      title: edge.node.title,
-      image: edge.node.images.edges[0]?.node || null,
-    }));
+    const products =
+      data?.data?.products?.edges?.map((edge) => edge.node) || [];
 
-    return Response.json({ products });
+    return Response.json({ success: true, products });
   } catch (error) {
     console.error("❌ Error fetching products:", error);
-    return Response.json({ products: [], error: error.message });
+    return Response.json({ success: false, error: error.message });
   }
-};
+}

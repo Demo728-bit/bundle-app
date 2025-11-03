@@ -1,14 +1,102 @@
-{% if product.metafields.custom.bundle_app.bundle_products != blank %}
-  <div class="bundle-products">
-    <h3>Frequently Bought Together</h3>
-    <ul>
-      {% for related in product.metafields.bundle_app.bundle_products.value %}
-        {% assign product_id = related.id | remove: "gid://shopify/Product/" %}
-        {% assign related_product = all_products[product_id] %}
-        <li>
-          <a href="{{ related_product.url }}">{{ related_product.title }}</a>
-        </li>
-      {% endfor %}
-    </ul>
-  </div>
+{% if product.metafields.custom.bundle_pdp != blank %}
+  {% assign bundle_data = product.metafields.custom.bundle_pdp.value | parse_json %}
+
+  {% if bundle_data.bundleProductHandles and bundle_data.bundleProductHandles.size > 0 %}
+    <div class="bundle-products">
+      <h3 class="h2">{{ heading | default: "Frequently Bought Together" }}</h3>
+
+      <ul class="bundleRow">
+        {% for handle in bundle_data.bundleProductHandles %}
+          {% assign related_product = all_products[handle] %}
+          {% if related_product %}
+            <li class="bundleCol">
+              <span class="bundleMedia">
+                <a href="{{ related_product.url }}" class="bundlePdpUrl">
+                  <img
+                    src="{{ related_product.featured_image | img_url: 'master' }}"
+                    alt="{{ related_product.title }}"
+                    loading="lazy"
+                  />
+                </a>
+              </span>
+
+              <a href="{{ related_product.url }}" class="bundlePdpUrl">
+                <strong>{{ related_product.title }}</strong>
+                <div class="bundlePdpPrice">
+                  <p>{{ related_product.price | money }}</p>
+                  {% if related_product.compare_at_price > related_product.price %}
+                    <del>{{ related_product.compare_at_price | money }}</del>
+                  {% endif %}
+                </div>
+              </a>
+            </li>
+          {% endif %}
+        {% endfor %}
+      </ul>
+      {% if block.settings.show_bundle_button == true %}
+        <div class="bundle_atc_btn">
+          <!-- Custom Bundle Add Button -->
+          <button id="add-bundle-btn" class="button">
+            Add Bundle to Cart
+          </button>
+        </div>
+      {% endif %}
+      <script>
+        document.addEventListener("DOMContentLoaded", () => {
+          const bundleHandles = {{ bundle_data.bundleProductHandles | json }};
+          const addBundleBtn = document.querySelector("#add-bundle-btn");
+          const mainATCBtn = document.querySelector(".product-form__submit");
+
+          // 🧩 Helper: Add products to cart using handles
+          async function addProductsToCart(handles) {
+            try {
+              const variantPromises = handles.map(handle =>
+                fetch(`/products/${handle}.js`).then(res => res.json())
+              );
+              const products = await Promise.all(variantPromises);
+              const items = products.map(p => ({
+                id: p.variants[0].id,
+                quantity: 1,
+              }));
+
+              const res = await fetch("/cart/add.js", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ items }),
+              });
+              return res;
+            } catch (error) {
+              console.error("Error adding bundle:", error);
+              return null;
+            }
+          }
+
+          // ✅ 1️⃣ Custom "Add Bundle to Cart" button
+          if (addBundleBtn) {
+            addBundleBtn.addEventListener("click", async () => {
+              const res = await addProductsToCart(bundleHandles);
+              if (res && res.ok) {
+                window.location.href = "/cart";
+              } else {
+                alert("⚠️ Failed to add bundle to cart!");
+              }
+            });
+          }
+
+          // ✅ 2️⃣ Auto-add bundle when main ATC clicked
+          if (mainATCBtn) {
+            mainATCBtn.addEventListener("click", async () => {
+              // Wait a short moment for Shopify to finish adding main product
+              setTimeout(async () => {
+                const res = await addProductsToCart(bundleHandles);
+                if (!res || !res.ok) {
+                  console.warn("⚠️ Could not auto-add bundle products.");
+                }
+              }, 1000);
+            });
+          }
+        });
+      </script>
+    </div>
+  {% endif %}
 {% endif %}

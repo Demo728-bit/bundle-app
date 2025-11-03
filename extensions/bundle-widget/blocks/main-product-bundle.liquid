@@ -1,11 +1,24 @@
-{% render 'product-bundle' %}
+{% render 'product-bundle', heading: block.settings.section_heading %}
 
 {% schema %}
 {
   "name": "Bundle App",
   "target": "section",
+  "stylesheet": "bundle.css",
   "settings": [
-  ]
+    {
+      "type": "checkbox",
+      "id": "show_bundle_button",
+      "label": "Show Add Bundle Button",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "section_heading",
+      "label": "Section Heading",
+      "default": "Bundle Products"
+    }
+  ],
 }
 {% endschema %}
 
