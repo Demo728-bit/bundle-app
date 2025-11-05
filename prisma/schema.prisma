@@ -30,3 +30,14 @@ model Session {
   collaborator  Boolean?  @default(false)
   emailVerified Boolean?  @default(false)
 }
+
+model Bundle {
+  id             Int      @id @default(autoincrement())
+  bundleName     String
+  mainProductId  String
+  bundleProducts String   // JSON string of product IDs or handles
+  shopDomain     String   // the Shopify shop that created this bundle
+  createdAt      DateTime @default(now())
+}
+
+

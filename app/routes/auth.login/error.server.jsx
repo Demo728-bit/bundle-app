@@ -1,4 +1,5 @@
 import { LoginErrorType } from "@shopify/shopify-app-react-router/server";
+import { authenticate } from "~/shopify.server";
 
 export function loginErrorMessage(loginErrors) {
   if (loginErrors?.shop === LoginErrorType.MissingShop) {
